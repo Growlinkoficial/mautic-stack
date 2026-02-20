@@ -236,9 +236,18 @@ main() {
     CURRENT_STAGE="Config Generation"
     log_info "Preparando arquivos de configuração..."
     if [ ! -f "${PROJECT_ROOT}/config/local.php" ]; then
-        envsubst < "${PROJECT_ROOT}/config/local.php.tpl" > "${PROJECT_ROOT}/config/local.php"
+        # CRÍTICO: usar lista explícita de vars para NÃO substituir $parameters do PHP
+        # envsubst sem lista substitui qualquer $VAR, incluindo $parameters → quebra o PHP
+        envsubst '${MYSQL_DATABASE}${MYSQL_USER}${MYSQL_PASSWORD}${REDIS_PASSWORD}${MAUTIC_URL}' \
+            < "${PROJECT_ROOT}/config/local.php.tpl" \
+            > "${PROJECT_ROOT}/config/local.php"
         # [GUARDA RACE CONDITION]
         [ -f "${PROJECT_ROOT}/config/local.php" ] || { log_error "local.php não foi gerado. Abortando."; exit 1; }
+        # Sanity check: garantir que $parameters não foi corrompido
+        grep -q '\$parameters' "${PROJECT_ROOT}/config/local.php" || {
+            log_error "local.php corrompido: \$parameters foi substituído pelo envsubst. Abortando."
+            exit 1
+        }
         log_success "Arquivo config/local.php gerado."
     else
         log_info "config/local.php já existe. Poupando geração."
