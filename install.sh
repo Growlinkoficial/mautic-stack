@@ -310,15 +310,15 @@ main() {
         log_info "Mautic não instalado. Iniciando instalação CLI..."
         docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T -w /var/www/html mautic \
             php bin/console mautic:install \
-            --db-host=mysql --db-port=3306 \
-            --db-name="${MYSQL_DATABASE}" \
-            --db-user="${MYSQL_USER}" \
-            --db-password="${MYSQL_PASSWORD}" \
-            --admin-email="${MAUTIC_ADMIN_EMAIL}" \
-            --admin-username="${MAUTIC_ADMIN_USERNAME:-admin}" \
-            --admin-firstname="${MAUTIC_ADMIN_FIRSTNAME}" \
-            --admin-lastname="${MAUTIC_ADMIN_LASTNAME}" \
-            --admin-password="${MAUTIC_ADMIN_PASSWORD}" \
+            --db_host=mysql --db_port=3306 \
+            --db_name="${MYSQL_DATABASE}" \
+            --db_user="${MYSQL_USER}" \
+            --db_password="${MYSQL_PASSWORD}" \
+            --admin_email="${MAUTIC_ADMIN_EMAIL}" \
+            --admin_username="${MAUTIC_ADMIN_USERNAME:-admin}" \
+            --admin_firstname="${MAUTIC_ADMIN_FIRSTNAME}" \
+            --admin_lastname="${MAUTIC_ADMIN_LASTNAME}" \
+            --admin_password="${MAUTIC_ADMIN_PASSWORD}" \
             "${MAUTIC_URL}"
 
         # Corrigir permissões iniciais no volume
