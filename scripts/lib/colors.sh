@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Source guard
-if [ -n "${_LIB_COLORS_SH_LOADED:-}" ]; then return; fi
-_LIB_COLORS_SH_LOADED=1
+[[ "${_LIB_COLORS_SH_LOADED:-}" == "true" ]] && return
+_LIB_COLORS_SH_LOADED="true"
 
 # Cores ANSI para saída no terminal
 readonly GREEN='\033[0;32m'

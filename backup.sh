@@ -1,11 +1,13 @@
 #!/bin/bash
+set -euo pipefail
 
 # Carregar env vars para execução standalone
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "${SCRIPT_DIR}/.env" ]; then
-    set -a; source "${SCRIPT_DIR}/.env"; set +a
+PROJECT_ROOT="$SCRIPT_DIR"
+if [ -f "${PROJECT_ROOT}/.env" ]; then
+    set -a; source "${PROJECT_ROOT}/.env"; set +a
 else
-    echo "Erro: Arquivo .env não encontrado em $SCRIPT_DIR"
+    echo "Erro: Arquivo .env não encontrado em $PROJECT_ROOT"
     exit 1
 fi
 

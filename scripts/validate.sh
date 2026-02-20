@@ -55,6 +55,13 @@ validate_stack() {
         log_warning "Redis não detectado como o adaptador de cache ativo no Mautic."
     fi
 
+    # 6. Mautic Worker Consumer Check (R-03)
+    if docker compose -f "${PROJECT_ROOT}/docker-compose.yml" ps mautic_worker | grep -qi "running\|up"; then
+        log_success "Mautic Worker (consumer de filas) está rodando."
+    else
+        log_warning "Mautic Worker não detectado como rodando. Verifique: docker compose logs mautic_worker"
+    fi
+
     log_success "Validação concluída."
     return 0
 }

@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # ==============================================================================
 # MAUTIC STACK UNINSTALLER
@@ -34,6 +35,10 @@ fi
 log_info "Removendo cron jobs..."
 rm -f /etc/cron.d/mautic-stack
 log_success "Cron jobs removidos."
+
+# 1b. Remover Logrotate
+rm -f /etc/logrotate.d/mautic-stack
+log_info "Configuração de logrotate removida."
 
 # 2. Docker Compose Down
 log_info "Parando e removendo containers..."

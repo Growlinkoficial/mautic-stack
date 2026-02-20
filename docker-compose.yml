@@ -12,11 +12,20 @@ services:
       - mysql_data:/var/lib/mysql
     networks:
       - mautic_net
+    # WARN-003: healthcheck com autenticação root
+    # R-04: start_period para evitar falsos negativos na inicialização
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}" ]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
+    # WARN-001: limites de recursos
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
 
   redis:
     image: redis:7-alpine
@@ -28,11 +37,18 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
     networks:
       - mautic_net
+    # ERR-20260220-006: REDIS_PASSWORD já no environment para o healthcheck funcionar
     healthcheck:
       test: [ "CMD-SHELL", "redis-cli --no-auth-warning -a $$REDIS_PASSWORD ping | grep PONG" ]
       interval: 10s
       timeout: 5s
       retries: 3
+    # WARN-001: limites de recursos
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
 
   mautic:
     image: mautic/mautic:5-apache
@@ -50,21 +66,42 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # WARN-002: healthcheck HTTP no Mautic
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost/s/login" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    # WARN-001: limites de recursos
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1G
 
   mautic_worker:
     image: mautic/mautic:5-apache
     restart: unless-stopped
     # Symfony Messenger consumer - processa filas assíncronas do Mautic 5
+    # LRN-20260219-001: memory-limit DEVE ter unidade (ex: 256M), não apenas 256
     command: php bin/console mautic:messages:consume email --time-limit=300 --memory-limit=256M
     volumes:
-      - mautic_data:/var/www/html
+      - mautic_data:/var/www/html:ro # WARN-006: readonly — worker não deve escrever nos assets
       - ./config/local.php:/var/www/html/app/config/local.php
       - ./config/php.ini:/usr/local/etc/php/conf.d/mautic-custom.ini
     networks:
       - mautic_net
+    # WARN-002: aguarda Mautic estar saudável antes de iniciar
     depends_on:
       mautic:
-        condition: service_started
+        condition: service_healthy
+    # WARN-001: limites de recursos
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
 
 networks:
   mautic_net:

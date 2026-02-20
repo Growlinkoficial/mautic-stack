@@ -164,6 +164,21 @@ EOF
     chmod 644 "$CRON_FILE"
     log_success "Cron jobs instalados em $CRON_FILE"
 
+    # WARN-007: Configuração de rotação de logs para evitar disco cheio
+    log_info "Configurando rotação de logs (logrotate)..."
+    cat > /etc/logrotate.d/mautic-stack <<'LOGROTATE'
+/var/log/mautic-stack/*.log {
+    daily
+    missingok
+    rotate 14
+    compress
+    delaycompress
+    notifempty
+    copytruncate
+}
+LOGROTATE
+    log_success "Logrotate configurado: /etc/logrotate.d/mautic-stack (14 dias, compress)"
+
     # 10. Configurar Nginx (Opcional)
     if [[ "$USE_DOMAIN" == "true" ]]; then
         source "${PROJECT_ROOT}/scripts/nginx_setup.sh"
@@ -191,7 +206,7 @@ EOF
     echo
     echo -e "  🚀 URL: ${MAUTIC_URL}"
     echo -e "  👤 Admin: ${MAUTIC_ADMIN_EMAIL}"
-    echo -e "  🔑 Senha: ${MAUTIC_ADMIN_PASSWORD}"
+    echo -e "  🔑 Senha: (conforme configurado no .env — nunca exibida por segurança)"
     echo -e "  📁 Logs: /var/log/mautic-stack/"
     echo -e "  💾 Backup: Execute ./backup.sh"
     echo
