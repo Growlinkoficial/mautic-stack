@@ -33,7 +33,7 @@ services:
       retries: 3
 
   mautic:
-    image: mautic/mautic:v5
+    image: mautic/mautic:5-apache
     restart: unless-stopped
     ports:
       - "${MAUTIC_PORT:-8080}:80"
@@ -50,7 +50,7 @@ services:
         condition: service_healthy
 
   mautic_worker:
-    image: mautic/mautic:v5
+    image: mautic/mautic:5-apache
     restart: unless-stopped
     # Symfony Messenger consumer - processa filas assíncronas do Mautic 5
     command: php bin/console mautic:messages:consume email --time-limit=300 --memory-limit=256M
