@@ -29,26 +29,45 @@ setup_nginx() {
     local config_file="/etc/nginx/sites-available/mautic-$config_name"
     local enabled_file="/etc/nginx/sites-enabled/mautic-$config_name"
 
-    # 3. Criar configuração HTTP
+    # 3. Criar configuração com bloco HTTP (redirect) e HTTPS (proxy)
+    # X-Forwarded-Proto é HTTPS hardcoded — sem isso o Mautic entra em redirect loop
     cat > "$config_file" <<EOF
 server {
     listen 80;
     server_name $domain;
+
+    # ACME challenge para renovação automática do Certbot
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    # Redirecionar tudo para HTTPS
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name $domain;
+
+    # Certbot vai inserir ssl_certificate e ssl_certificate_key aqui
 
     # Mautic requer limites de upload maiores
     client_max_body_size 50M;
 
     location / {
         proxy_pass http://localhost:$port;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        
+        proxy_set_header Host              \$host;
+        proxy_set_header X-Real-IP         \$remote_addr;
+        proxy_set_header X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        # https HARDCODED — obrigatório para evitar redirect loop com Mautic
+        proxy_set_header X-Forwarded-Proto https;
+
         proxy_connect_timeout 600;
-        proxy_send_timeout 600;
-        proxy_read_timeout 600;
-        send_timeout 600;
+        proxy_send_timeout    600;
+        proxy_read_timeout    600;
+        send_timeout          600;
     }
 }
 EOF
