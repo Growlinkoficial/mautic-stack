@@ -13,7 +13,7 @@ services:
     networks:
       - mautic_net
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,13 +27,13 @@ services:
     networks:
       - mautic_net
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a $$REDIS_PASSWORD ping | grep PONG"]
+      test: [ "CMD-SHELL", "redis-cli --no-auth-warning -a $$REDIS_PASSWORD ping | grep PONG" ]
       interval: 10s
       timeout: 5s
       retries: 3
 
   mautic:
-    image: mautic/mautic:5.2.6
+    image: mautic/mautic:v5
     restart: unless-stopped
     ports:
       - "${MAUTIC_PORT:-8080}:80"
@@ -50,7 +50,7 @@ services:
         condition: service_healthy
 
   mautic_worker:
-    image: mautic/mautic:5.2.6
+    image: mautic/mautic:v5
     restart: unless-stopped
     # Symfony Messenger consumer - processa filas assíncronas do Mautic 5
     command: php bin/console mautic:messages:consume email --time-limit=300 --memory-limit=256M
