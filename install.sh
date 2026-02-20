@@ -257,9 +257,10 @@ main() {
     CURRENT_STAGE="Docker Compose Up"
     log_info "Baixando imagens base (Docker Pull)..."
     
-    # Forçamos a saída para o terminal direto para tentar manter a UI nativa
-    # sem poluir o log verboso com sequências de escape.
-    if ! docker compose -f "${PROJECT_ROOT}/docker-compose.yml" pull > /dev/tty 2>&1; then
+    # --ignore-buildable: pula serviços com 'build:' (ex: mautic-custom:5-apache).
+    # Essas imagens são construídas localmente via Dockerfile — não existem no Docker Hub.
+    # ERR-20260220-NEW: sem essa flag, 'docker compose pull' tenta baixar mautic-custom e falha.
+    if ! docker compose -f "${PROJECT_ROOT}/docker-compose.yml" pull --ignore-buildable > /dev/tty 2>&1; then
         log_error "Falha ao baixar imagens. Verifique sua conexão."
         exit 1
     fi
