@@ -105,10 +105,8 @@ services:
           memory: 1G
 
   mautic_worker:
-    # Usa o mesmo build customizado do serviço mautic (libavif15 + gd)
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # Reutiliza a imagem já buildada pelo serviço 'mautic' — não faz build próprio.
+    # ERR-20260220-018: dois serviços com build:+image: idênticos causam conflito de tag.
     image: mautic-custom:5-apache
     restart: unless-stopped
     # Symfony Messenger consumer - processa filas assíncronas do Mautic 5
