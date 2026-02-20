@@ -257,11 +257,12 @@ main() {
     CURRENT_STAGE="Docker Compose Up"
     log_info "Baixando imagens base (Docker Pull)..."
     
-    # --ignore-buildable: pula serviços com 'build:' (ex: mautic-custom:5-apache).
-    # Essas imagens são construídas localmente via Dockerfile — não existem no Docker Hub.
-    # ERR-20260220-NEW: sem essa flag, 'docker compose pull' tenta baixar mautic-custom e falha.
-    if ! docker compose -f "${PROJECT_ROOT}/docker-compose.yml" pull --ignore-buildable > /dev/tty 2>&1; then
-        log_error "Falha ao baixar imagens. Verifique sua conexão."
+    # Pull explícito apenas das imagens de terceiros (mysql, redis).
+    # NÃO fazer pull de mautic/mautic_worker: mautic tem build: (imagem local),
+    # e mautic_worker referencia a mesma imagem local — nenhuma delas existe no Docker Hub.
+    # ERR-20260220-017/018: qualquer pull genérico falha com "pull access denied for mautic-custom".
+    if ! docker compose -f "${PROJECT_ROOT}/docker-compose.yml" pull mysql redis > /dev/tty 2>&1; then
+        log_error "Falha ao baixar imagens base (mysql/redis). Verifique sua conexão."
         exit 1
     fi
     log_success "Imagens base baixadas com sucesso."
