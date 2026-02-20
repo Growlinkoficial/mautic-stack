@@ -83,8 +83,17 @@ main() {
 
     # 6. Docker Compose Up
     CURRENT_STAGE="Docker Compose Up"
+    log_info "Baixando imagens (Docker Pull)..."
+    
+    # Forçamos o progresso para o terminal direto para ter a barra bonita
+    # e jogamos apenas o resultado final para o log verboso.
+    if ! docker compose -f "${PROJECT_ROOT}/docker-compose.yml" pull --progress tty > /dev/tty 2>&1; then
+        log_error "Falha ao baixar imagens. Verifique sua conexão."
+        exit 1
+    fi
+    log_success "Imagens baixadas com sucesso."
+
     log_info "Iniciando containers via Docker Compose..."
-    docker compose -f "${PROJECT_ROOT}/docker-compose.yml" pull
     if ! docker compose -f "${PROJECT_ROOT}/docker-compose.yml" up -d; then
         log_error "Falha ao iniciar containers via Docker Compose. Consultando logs..."
         docker compose -f "${PROJECT_ROOT}/docker-compose.yml" logs --tail=20
