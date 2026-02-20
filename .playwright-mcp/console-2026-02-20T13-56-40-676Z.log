@@ -1,6 +1,0 @@
-[    2842ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://hub.docker.com/auth/profile:0
-[    3263ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://hub.docker.com/api/media/repos_logo/v1/mautic%2Fmautic?type=logo:0
-[    3464ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://hub.docker.com/v2/user/:0
-[    3510ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://hub.docker.com/api/media/repos_logo/v1/mautic%2Fmautic?type=logo:0
-[    3860ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://hub.docker.com/api/content/v1/entitlement/mautic/features:0
-[    4117ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://hub.docker.com/api/content/v1/entitlement/mautic/features:0
