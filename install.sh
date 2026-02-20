@@ -314,8 +314,14 @@ main() {
     # 8. Instalação Headless Mautic
     CURRENT_STAGE="Mautic Install"
     log_info "Verificando status de instalação do Mautic..."
-    # Usar mautic:about para verificação robusta (LRN-20260219-004)
-    if ! docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T -w /var/www/html mautic php bin/console about 2>&1 | grep -qi "installed.*yes"; then
+
+    # Detectar se já instalado via local.php (mais confíiavel que `about` que não tem output de install status)
+    local already_installed=false
+    if grep -q "'installed' => true" "${PROJECT_ROOT}/config/local.php" 2>/dev/null; then
+        already_installed=true
+    fi
+
+    if [ "$already_installed" = "false" ]; then
         log_info "Mautic não instalado. Iniciando instalação CLI..."
         docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T -w /var/www/html mautic \
             php bin/console mautic:install \
@@ -330,16 +336,18 @@ main() {
             --admin_password="${MAUTIC_ADMIN_PASSWORD}" \
             "${MAUTIC_URL}"
 
+        # Marcar como instalado no local.php do HOST
+        # O mautic:install CLI não atualiza o arquivo bind-mounted automaticamente
+        sed -i "s/'installed' => false,/'installed' => true,/" "${PROJECT_ROOT}/config/local.php"
+        grep -q "'installed' => true" "${PROJECT_ROOT}/config/local.php" \
+            && log_success "local.php marcado como installed=true." \
+            || log_warning "Não foi possível marcar installed=true no local.php — verifique manualmente."
+
         # Corrigir permissões iniciais no volume
         docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T mautic chown -R www-data:www-data /var/www/html
-
-        # Marcar installed => true no local.php do HOST (bind mount)
-        # O Mautic escreve installed=true dentro do container, mas o bind mount
-        # sobrepõe com a versão do host que tem installed=false (ERR-20260220-012)
-        sed -i "s/'installed'.*=>.*false/'installed' => true/" "${PROJECT_ROOT}/config/local.php"
         log_success "Mautic instalado com sucesso via CLI."
     else
-        log_info "Mautic já consta como instalado. Pulando mautic:install."
+        log_info "Mautic já consta como instalado (local.php: installed=true). Pulando mautic:install."
     fi
 
     # 9. Pós-Instalação / Cache

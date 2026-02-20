@@ -81,9 +81,6 @@ sudo ./uninstall.sh
   3. Workdir: sempre `-w /var/www/html` em todos os `docker compose exec`.
   4. CLI params: `mautic:install` usa underscores (`--db_host`), não hyphens (`--db-host`).
   5. Redirect loop SSL: `local.php` precisa de `trusted_proxies => ['0.0.0.0/0']` + Nginx precisa de `X-Forwarded-Proto https` hardcoded no bloco 443. Nunca incluir `listen 443 ssl` antes do Certbot rodar (`nginx -t` falha sem certificado).
-  6. **Symfony `TRUSTED_PROXIES`**: o `trusted_proxies` do `local.php` é ignorado pelo Symfony! Usar env var `TRUSTED_PROXIES: 0.0.0.0/0` no `docker-compose.yml` (LRN-20260220-010).
-  7. **Bind mount `installed => false`**: após `mautic:install` via CLI, rodar `sed -i "s/'installed'.*=>.*false/'installed' => true/"` no `config/local.php` do HOST (LRN-20260220-011).
-  8. **`envsubst` corrompe PHP**: usar lista explícita de vars `envsubst '${VAR1}${VAR2}...'` para não destruir `$parameters` do PHP (LRN-20260220-009).
 
 ---
 
