@@ -26,8 +26,9 @@ validate_stack() {
     fi
 
     # 2. HTTP Check (Login page)
+    # Fix: -L para seguir redirect 301→200 em instalações com SSL (LRN-20260220-015)
     local url="http://localhost:${MAUTIC_PORT:-8080}/s/login"
-    local http_code=$(curl -s -o /dev/null -w "%{http_code}" "$url")
+    local http_code=$(curl -s -o /dev/null -w "%{http_code}" -L --max-redirs 3 "$url")
     if [ "$http_code" == "200" ]; then
         log_success "Mautic respondendo com HTTP 200 na página de login."
     else

@@ -255,7 +255,7 @@ main() {
 
     # 6. Docker Compose Up
     CURRENT_STAGE="Docker Compose Up"
-    log_info "Baixando imagens (Docker Pull)..."
+    log_info "Baixando imagens base (Docker Pull)..."
     
     # Forçamos a saída para o terminal direto para tentar manter a UI nativa
     # sem poluir o log verboso com sequências de escape.
@@ -263,7 +263,16 @@ main() {
         log_error "Falha ao baixar imagens. Verifique sua conexão."
         exit 1
     fi
-    log_success "Imagens baixadas com sucesso."
+    log_success "Imagens base baixadas com sucesso."
+
+    # Construir imagem customizada (Dockerfile com libavif15 para extensão gd)
+    # ERR-20260220-015: mautic/mautic:5-apache requer libavif15 que não vem no Debian base
+    log_info "Construindo imagem customizada (Dockerfile)..."
+    if ! docker compose -f "${PROJECT_ROOT}/docker-compose.yml" build > /dev/tty 2>&1; then
+        log_error "Falha ao construir imagem customizada. Verifique o Dockerfile."
+        exit 1
+    fi
+    log_success "Imagem customizada construída com sucesso."
 
     log_info "Iniciando containers via Docker Compose..."
     if ! docker compose -f "${PROJECT_ROOT}/docker-compose.yml" up -d; then
@@ -343,8 +352,14 @@ main() {
             && log_success "local.php marcado como installed=true." \
             || log_warning "Não foi possível marcar installed=true no local.php — verifique manualmente."
 
-        # Corrigir permissões iniciais no volume
+        # Corrigir permissões no volume
+        # Escopo amplo primeiro para garantir www-data em todos os arquivos
         docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T mautic chown -R www-data:www-data /var/www/html
+        # Fix: var/cache e var/logs precisam de permissão de escrita para o Mautic
+        # Sem isso, downloads de pacotes de idioma (ex: pt_BR.zip) falham com Permission denied
+        # (LanguageHelper.php tenta escrever em /var/www/html/var/cache/prod/)
+        docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T mautic chmod -R 775 /var/www/html/var/cache
+        docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T mautic chmod -R 775 /var/www/html/var/logs
         log_success "Mautic instalado com sucesso via CLI."
     else
         log_info "Mautic já consta como instalado (local.php: installed=true). Pulando mautic:install."

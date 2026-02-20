@@ -1,110 +1,73 @@
 # Mautic Stack (v5 + Redis + MySQL + Docker)
 
-Script de instalação **automatizado, idempotente e resiliente** para Mautic 5 no Ubuntu 24.04.
-Stack: `mautic/mautic:5-apache` · `mysql:8.0` · `redis:7-alpine` · Nginx + SSL (opcional).
+Instalação **automatizada, idempotente e resiliente** do Mautic 5 no Ubuntu 24.04.
+
+```
+mautic/mautic:5-apache (custom)  ·  mysql:8.0  ·  redis:7-alpine  ·  Nginx + SSL
+```
 
 ---
 
-## 🚀 Instalação
+## ⚡ Instalação Rápida
 
 ```bash
 chmod +x install.sh
 sudo ./install.sh
 ```
 
-O instalador guia você por todas as configurações necessárias via **wizard interativo**:
-- Domínio ou localhost
-- Porta (padrão 8080)
-- Email e nome do administrador
-- **Senhas geradas automaticamente** e salvas no `.env`
+O wizard interativo configura domínio, porta, admin e gera senhas automaticamente.
+Credenciais salvas em `.env` — nunca exibidas no terminal.
 
-> Referência de variáveis disponíveis: `.env.example`
+> Referência de variáveis: `.env.example`
 
 ---
 
-## 📂 Estrutura
+## 📚 Documentação
 
-| Arquivo/Diretório | Descrição |
-|---|---|
-| `install.sh` | Instalador principal (idempotente) |
-| `uninstall.sh` | Remoção completa (containers, crons, SSL) |
-| `backup.sh` | Backup do banco MySQL + volume de arquivos |
-| `restore.sh` | Restauração a partir de backup existente |
-| `docker-compose.yml` | Definição dos 4 serviços (com healthchecks e resource limits) |
-| `config/` | Templates de configuração (`local.php.tpl`, `php.ini`) |
-| `scripts/` | Libs e scripts auxiliares (`preflight`, `nginx_setup`, `validate`) |
-| `directives/` | SOPs operacionais (guia para agentes de IA) |
-| `backups/` | Saída padrão de backups locais |
-| `.learnings/` | Registro de erros e aprendizados operacionais |
+| Tópico | Descrição |
+|--------|-----------|
+| [📦 Instalação](docs/installation.md) | Como o `install.sh` funciona, pré-requisitos, wizard, fluxo de 11 etapas |
+| [💾 Backup & Restore](docs/backup-restore.md) | O que é salvo, como restaurar, estratégia de retenção |
+| [🛠️ Operações](docs/operations.md) | Comandos do dia a dia, idioma, cache, logs, worker |
+| [🔎 Troubleshooting](docs/troubleshooting.md) | Todos os erros conhecidos — sintoma → causa → solução |
+| [🏗️ Arquitetura](docs/architecture.md) | Por que 4 containers, SSL termination, Dockerfile customizado |
 
 ---
 
-## 🛠️ Comandos Úteis
+## 📂 Estrutura do Projeto
 
-```bash
-# Status do stack
-sudo ./scripts/validate.sh
-
-# Backup manual
-sudo ./backup.sh
-
-# Restauração
-sudo ./restore.sh
-
-# Logs em tempo real (Execute na raiz /home/mautic-stack)
-docker compose logs -f mautic
-docker compose logs -f mautic_worker
-
-# Limpar cache do Mautic
-docker compose exec mautic php bin/console cache:clear
-
-# Reiniciar serviço
-docker compose restart mautic
 ```
-
----
-
-## ❓ Troubleshooting
-
-### 1. "no configuration file provided: not found"
-Você está executando os comandos fora do diretório do projeto.
-**Solução:** Sempre use `cd /home/mautic-stack` antes de rodar comandos `docker compose`.
-
-### 2. "ERR_TOO_MANY_REDIRECTS" ou Login não aparece
-O Mautic pode ter falhado ao detectar o SSL do Nginx ou o `local.php` foi corrompido durante o `envsubst`.
-**Solução:**
-```bash
-# Verificar se local.php está íntegro
-grep '$parameters' config/local.php || echo "Arquivo corrompido!"
-
-# Forçar detecção de HTTPS no Apache
-docker compose up -d --force-recreate mautic
+.
+├── install.sh            # Orquestrador principal (idempotente)
+├── uninstall.sh          # Remove tudo que o install criou
+├── backup.sh             # Dump MySQL + tarball do volume
+├── restore.sh            # Restaura a partir do backup mais recente
+├── Dockerfile            # Imagem customizada (adiciona libavif15 para gd)
+├── docker-compose.yml    # 4 serviços com healthchecks e resource limits
+├── config/               # local.php.tpl, php.ini, apache-proxy.conf
+├── scripts/              # preflight, docker_install, nginx_setup, validate
+├── docs/                 # Documentação técnica detalhada
+├── directives/           # SOPs operacionais (guia para agentes de IA)
+├── backups/              # Saída dos backups locais
+└── .learnings/           # Registro histórico de erros e aprendizados
 ```
-
-### 3. "Could not open input file: bin/console"
-O container mautic_worker iniciou antes do mautic_web terminar de copiar os arquivos para o volume.
-**Solução:** Aguarde 60 segundos após o primeiro boot ou rode o `install.sh` que possui wait loops automáticos.
-
 
 ---
 
 ## ⚙️ Pré-requisitos
 
-- Ubuntu 24.04 LTS  
-- Mínimo 2GB RAM, 20GB disco  
-- Acesso root (sudo)  
-- Docker instalado (ou o instalador instala automaticamente)
+- Ubuntu 24.04 LTS · Mín. 2 GB RAM · 20 GB disco · Acesso root
 
 ---
 
 ## 🔒 Segurança
 
-- Todos os segredos via `.env` (nunca commitar)  
-- Redis com senha obrigatória (`REDIS_PASSWORD`)  
-- Senhas admin **nunca exibidas** no terminal após instalação  
+- Todos os segredos em `.env` (nunca commitar)
+- Redis com senha obrigatória
 - Logrotate configurado (14 dias, compactado)
 
 ---
 
 ## ⚖️ Licença
+
 Uso interno Growlink.
