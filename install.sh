@@ -332,6 +332,11 @@ main() {
 
         # Corrigir permissões iniciais no volume
         docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T mautic chown -R www-data:www-data /var/www/html
+
+        # Marcar installed => true no local.php do HOST (bind mount)
+        # O Mautic escreve installed=true dentro do container, mas o bind mount
+        # sobrepõe com a versão do host que tem installed=false (ERR-20260220-012)
+        sed -i "s/'installed'.*=>.*false/'installed' => true/" "${PROJECT_ROOT}/config/local.php"
         log_success "Mautic instalado com sucesso via CLI."
     else
         log_info "Mautic já consta como instalado. Pulando mautic:install."
