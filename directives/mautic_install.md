@@ -80,7 +80,8 @@ sudo ./uninstall.sh
   2. Race condition: aguardar `/var/www/html/bin/console` existir antes de qualquer CLI (`until test -f ...`).
   3. Workdir: sempre `-w /var/www/html` em todos os `docker compose exec`.
   4. CLI params: `mautic:install` usa underscores (`--db_host`), não hyphens (`--db-host`).
-  5. Redirect loop SSL: `local.php` precisa de `trusted_proxies => ['0.0.0.0/0']` + Nginx precisa de `X-Forwarded-Proto https` hardcoded no bloco 443. Nunca incluir `listen 443 ssl` antes do Certbot rodar (`nginx -t` falha sem certificado).
+  5. **[NOVO] Proxy SSL**: `local.php` requer `trusted_proxies` AND Apache requer `SetEnvIf X-Forwarded-Proto https HTTPS=on` (via volume mount de `apache-proxy.conf`).
+- **[LRN-20260220-009] Envsubst guard**: Sempre use lista explícita de variáveis (ex: `envsubst '${VAR1}${VAR2}'`) ao gerar `local.php` para evitar que variáveis PHP legítimas sejam apagadas.
 
 ---
 
@@ -97,3 +98,14 @@ sudo ./uninstall.sh
 - **Issues**: readonly variable conflicts, wrong Docker tags, Redis healthcheck auth, missing `PROJECT_ROOT`, no resource limits, no logrotate.
 - **Solution**: See ERRORS.md / LEARNINGS.md in `.learnings/` for full structured log.
 - **Impact**: 7 files changed, all issues resolved, `restore.sh` created for disaster recovery.
+**[2026-02-20] - Learning: official MAUTIC_TRUSTED_PROXIES format**
+- **Context**: Symfony 5.4 behind Docker proxy.
+- **Issue**: Standard `TRUSTED_PROXIES` env was ignored.
+- **Solution**: Use `MAUTIC_TRUSTED_PROXIES` with JSON array format: `'["0.0.0.0/0"]'`.
+- **Impact**: Correct protocol detection at the framework level.
+
+**2026-02-20 - Learning: Apache HTTPS Detection Safeguard**
+- **Context**: `ERR_TOO_MANY_REDIRECTS` on Mautic 5.
+- **Issue**: Application layers sometimes miss proxy headers.
+- **Solution**: Mount `config/apache-proxy.conf` to `/etc/apache2/conf-enabled/` with `SetEnvIf`.
+- **Impact**: Force PHP to see `HTTPS=on`, breaking all redirect loops.

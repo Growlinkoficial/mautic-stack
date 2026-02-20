@@ -51,16 +51,40 @@ sudo ./backup.sh
 # Restauração
 sudo ./restore.sh
 
-# Logs em tempo real
+# Logs em tempo real (Execute na raiz /home/mautic-stack)
 docker compose logs -f mautic
 docker compose logs -f mautic_worker
 
 # Limpar cache do Mautic
 docker compose exec mautic php bin/console cache:clear
 
-# Reiniciar apenas um serviço
+# Reiniciar serviço
 docker compose restart mautic
 ```
+
+---
+
+## ❓ Troubleshooting
+
+### 1. "no configuration file provided: not found"
+Você está executando os comandos fora do diretório do projeto.
+**Solução:** Sempre use `cd /home/mautic-stack` antes de rodar comandos `docker compose`.
+
+### 2. "ERR_TOO_MANY_REDIRECTS" ou Login não aparece
+O Mautic pode ter falhado ao detectar o SSL do Nginx ou o `local.php` foi corrompido durante o `envsubst`.
+**Solução:**
+```bash
+# Verificar se local.php está íntegro
+grep '$parameters' config/local.php || echo "Arquivo corrompido!"
+
+# Forçar detecção de HTTPS no Apache
+docker compose up -d --force-recreate mautic
+```
+
+### 3. "Could not open input file: bin/console"
+O container mautic_worker iniciou antes do mautic_web terminar de copiar os arquivos para o volume.
+**Solução:** Aguarde 60 segundos após o primeiro boot ou rode o `install.sh` que possui wait loops automáticos.
+
 
 ---
 
