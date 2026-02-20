@@ -355,8 +355,9 @@ main() {
             || log_warning "Não foi possível marcar installed=true no local.php — verifique manualmente."
 
         # Corrigir permissões no volume
-        # Escopo amplo primeiro para garantir www-data em todos os arquivos
-        docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T mautic chown -R www-data:www-data /var/www/html
+        # ERR-20260220-019: sem --user root, www-data não pode chown arquivos de root
+        # (node_modules, docroot/media etc. são criados como root pelo entrypoint da imagem)
+        docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T --user root mautic chown -R www-data:www-data /var/www/html
         # Fix: var/cache e var/logs precisam de permissão de escrita para o Mautic
         # Sem isso, downloads de pacotes de idioma (ex: pt_BR.zip) falham com Permission denied
         # (LanguageHelper.php tenta escrever em /var/www/html/var/cache/prod/)
