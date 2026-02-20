@@ -1,6 +1,8 @@
 #!/bin/bash
 
-# Carregar libs
+# Source guard
+[[ "${_LIB_UTILS_SH_LOADED:-}" == "true" ]] && return
+_LIB_UTILS_SH_LOADED="true"
 LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 [[ -f "${LIB_DIR}/logging.sh" ]] && source "${LIB_DIR}/logging.sh"
 

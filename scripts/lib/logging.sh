@@ -1,13 +1,18 @@
 #!/bin/bash
 
+# Source guard para evitar carregamento duplo e erros de readonly
+if [ -n "${_LIB_LOGGING_SH_LOADED:-}" ]; then return; fi
+_LIB_LOGGING_SH_LOADED="true"
+
 # Carregar cores se disponíveis
 LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 [[ -f "${LIB_DIR}/colors.sh" ]] && source "${LIB_DIR}/colors.sh"
 
-readonly LOG_DIR="/var/log/mautic-stack"
-readonly LOG_FILE="${LOG_DIR}/install_$(date +%Y%m%d).log"
+# Variáveis globais de log (não readonly para permitir flexibilidade se necessário)
+LOG_DIR="/var/log/mautic-stack"
+LOG_FILE="${LOG_DIR}/install_$(date +%Y%m%d).log"
 
-# Garantir que o diretório de log existe
+# Garantir que o diretório de log existe (silencioso)
 mkdir -p "$LOG_DIR" 2>/dev/null || true
 
 log_info() {

@@ -9,6 +9,8 @@ if grep -q $'\r' "$0" 2>/dev/null; then
     sed -i 's/\r$//' "$0" 2>/dev/null && exec bash "$0" "$@"
 fi
 
+set -euo pipefail # Fail fast em erros
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$SCRIPT_DIR"
 
@@ -21,7 +23,7 @@ source "${PROJECT_ROOT}/scripts/lib/utils.sh"
 cleanup() {
     local exit_code=$?
     if [ $exit_code -ne 0 ]; then
-        log_error "Instalação interrompida com erro ($exit_code)"
+        log_error "Instalação interrompida com erro no estágio: ${CURRENT_STAGE:-desconhecido}"
     fi
 }
 trap cleanup EXIT
@@ -31,6 +33,10 @@ trap cleanup EXIT
 # ==============================================================================
 
 main() {
+    # Redirecionar output para log e terminal simultaneamente
+    mkdir -p /var/log/mautic-stack
+    exec > >(tee -i /var/log/mautic-stack/install_verbose.log) 2>&1
+
     clear
     echo -e "${BLUE}═══════════════════════════════════════════════════${NC}"
     echo -e "${BLUE}          MAUTIC STACK INSTALLER v5.2.6            ${NC}"
@@ -41,15 +47,18 @@ main() {
     validate_root
 
     # 2. Pre-flight Checks
+    CURRENT_STAGE="Pre-flight"
     source "${PROJECT_ROOT}/scripts/preflight.sh"
     pre_flight_checks
 
     # 3. Instalar Docker
+    CURRENT_STAGE="Docker Install"
     source "${PROJECT_ROOT}/scripts/docker_install.sh"
     install_docker
 
     # 4. Idempotência / Verificação de Instalação Existente
-    if docker compose ps --services --filter "status=running" | grep -q "mautic"; then
+    CURRENT_STAGE="Idempotency Check"
+    if docker compose ps --services --filter "status=running" | grep -qi "mautic"; then
         log_warning "Containers do Mautic já estão em execução."
         read -p "Deseja [r]einiciar, [a]tualizar ou [s]air? (r/a/s) [s]: " action
         action=${action:-s}
@@ -61,6 +70,7 @@ main() {
     fi
 
     # 5. Gerar local.php
+    CURRENT_STAGE="Config Generation"
     log_info "Preparando arquivos de configuração..."
     if [ ! -f "${PROJECT_ROOT}/config/local.php" ]; then
         envsubst < "${PROJECT_ROOT}/config/local.php.tpl" > "${PROJECT_ROOT}/config/local.php"
@@ -72,9 +82,14 @@ main() {
     fi
 
     # 6. Docker Compose Up
+    CURRENT_STAGE="Docker Compose Up"
     log_info "Iniciando containers via Docker Compose..."
     docker compose pull
-    docker compose up -d
+    if ! docker compose up -d; then
+        log_error "Falha ao iniciar containers via Docker Compose. Consultando logs..."
+        docker compose logs --tail=20
+        exit 1
+    fi
 
     # Aguardar healthchecks
     log_info "Aguardando containers ficarem saudáveis (timeout 120s)..."

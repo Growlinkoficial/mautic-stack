@@ -67,6 +67,13 @@ EOF
 
     # 5. Configurar SSL se solicitado
     if [[ "$use_ssl" =~ ^[SsYy]$ ]]; then
+        # Proteção contra email placeholder do Let's Encrypt
+        if [[ "$ssl_email" == "admin@example.com" ]]; then
+            log_warning "Certbot rejeita 'admin@example.com'. SSL será ignorado."
+            log_warning "Por favor, altere SSL_EMAIL no seu arquivo .env e execute novamente."
+            return 0
+        fi
+
         log_info "Solicitando certificado SSL via Certbot..."
         
         if ! command -v certbot &> /dev/null; then

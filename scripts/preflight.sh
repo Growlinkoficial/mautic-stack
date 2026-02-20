@@ -8,6 +8,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 pre_flight_checks() {
     log_info "Iniciando Pre-flight checks..."
 
+    # 0. Dependências Básicas
+    if ! command -v envsubst &> /dev/null; then
+        log_info "Instalando dependências básicas (gettext-base)..."
+        apt-get update -qq && apt-get install -y gettext-base
+    fi
+
     # 1. SO Check (Ubuntu 24.04 recomendado)
     if [[ -f /etc/os-release ]]; then
         source /etc/os-release

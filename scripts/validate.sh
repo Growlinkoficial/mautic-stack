@@ -7,8 +7,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 validate_stack() {
     log_info "Iniciando validação do Mautic Stack..."
 
+    # Carregar variáveis do .env (necessário para COMPOSE_PROJECT_NAME)
+    PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+    if [ -f "${PROJECT_ROOT}/.env" ]; then
+        set -a; source "${PROJECT_ROOT}/.env"; set +a
+    else
+        log_warning "Arquivo .env não encontrado em $PROJECT_ROOT. Usando padrões do Docker Compose."
+    fi
+
     # 1. Containers Running
-    local running_count=$(docker compose ps | grep -E "mautic|mautic_worker|mysql|redis" | grep -c "Up")
+    local running_count=$(docker compose ps | grep -E "mautic|mautic_worker|mysql|redis" | grep -c -i "running\|Up")
     if [ "$running_count" -ge 4 ]; then
         log_success "Todos os 4 containers estão em execução."
     else
@@ -18,9 +26,6 @@ validate_stack() {
     fi
 
     # 2. HTTP Check (Login page)
-    PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-    set -a; source "${PROJECT_ROOT}/.env"; set +a
-    
     local url="http://localhost:${MAUTIC_PORT:-8080}/s/login"
     local http_code=$(curl -s -o /dev/null -w "%{http_code}" "$url")
     if [ "$http_code" == "200" ]; then
