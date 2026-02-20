@@ -282,34 +282,57 @@ main() {
         fi
     done
 
-    # 7. Instalação Headless Mautic
+    # 7. Aguardar inicialização dos arquivos Mautic
+    # A imagem mautic/mautic:5-apache copia os arquivos para o volume na 1a execução.
+    # O health check HTTP passa antes desse processo terminar. (LRN-20260220-007)
+    CURRENT_STAGE="Mautic File Init"
+    log_info "Aguardando arquivos do Mautic serem inicializados no volume (bin/console)..."
+    local console_timeout=180
+    local console_start=$(date +%s)
+    until docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T mautic test -f /var/www/html/bin/console 2>/dev/null; do
+        local now=$(date +%s)
+        local waited_console=$((now - console_start))
+        if [ $waited_console -ge $console_timeout ]; then
+            log_error "Timeout (${console_timeout}s) aguardando bin/console. O volume pode estar vazio."
+            docker compose -f "${PROJECT_ROOT}/docker-compose.yml" logs mautic --tail=30
+            exit 1
+        fi
+        log_info "  bin/console ainda não disponível... (${waited_console}s)"
+        sleep 10
+    done
+    log_success "Arquivos do Mautic prontos."
+
+    # 8. Instalação Headless Mautic
+    CURRENT_STAGE="Mautic Install"
     log_info "Verificando status de instalação do Mautic..."
-    # Usar mautic:about para verificação robusta
-    if ! docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T mautic php bin/console about 2>&1 | grep -qi "installed.*yes"; then
+    # Usar mautic:about para verificação robusta (LRN-20260219-004)
+    if ! docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T -w /var/www/html mautic php bin/console about 2>&1 | grep -qi "installed.*yes"; then
         log_info "Mautic não instalado. Iniciando instalação CLI..."
-        docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T mautic php bin/console mautic:install \
+        docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T -w /var/www/html mautic \
+            php bin/console mautic:install \
             --db-host=mysql --db-port=3306 \
-            --db-name=${MYSQL_DATABASE} \
-            --db-user=${MYSQL_USER} \
-            --db-password=${MYSQL_PASSWORD} \
-            --admin-email=${MAUTIC_ADMIN_EMAIL} \
-            --admin-firstname=${MAUTIC_ADMIN_FIRSTNAME} \
-            --admin-lastname=${MAUTIC_ADMIN_LASTNAME} \
-            --admin-password=${MAUTIC_ADMIN_PASSWORD} \
+            --db-name="${MYSQL_DATABASE}" \
+            --db-user="${MYSQL_USER}" \
+            --db-password="${MYSQL_PASSWORD}" \
+            --admin-email="${MAUTIC_ADMIN_EMAIL}" \
+            --admin-username="${MAUTIC_ADMIN_USERNAME:-admin}" \
+            --admin-firstname="${MAUTIC_ADMIN_FIRSTNAME}" \
+            --admin-lastname="${MAUTIC_ADMIN_LASTNAME}" \
+            --admin-password="${MAUTIC_ADMIN_PASSWORD}" \
             "${MAUTIC_URL}"
-        
+
         # Corrigir permissões iniciais no volume
-        docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T mautic chown -R www-data:www-data .
+        docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T mautic chown -R www-data:www-data /var/www/html
         log_success "Mautic instalado com sucesso via CLI."
     else
         log_info "Mautic já consta como instalado. Pulando mautic:install."
     fi
 
-    # 8. Pós-Instalação / Cache
+    # 9. Pós-Instalação / Cache
     log_info "Limpando cache e gerando assets..."
-    docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T mautic php bin/console cache:clear
-    docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T mautic php bin/console mautic:assets:generate
-    docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T mautic php bin/console mautic:segments:update
+    docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T -w /var/www/html mautic php bin/console cache:clear
+    docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T -w /var/www/html mautic php bin/console mautic:assets:generate
+    docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T -w /var/www/html mautic php bin/console mautic:segments:update
 
     # 9. Configurar Cron Jobs
     log_info "Configurando Cron Jobs no host..."
