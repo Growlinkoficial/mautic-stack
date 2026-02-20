@@ -19,39 +19,19 @@ setup_nginx() {
         apt-get update -qq && apt-get install -y nginx
     fi
 
-    # 2. Pré-check da configuração atual do Nginx
-    nginx -t &> /dev/null || {
-        log_error "Configuração atual do Nginx é inválida. Corrija-a antes de continuar."
-        return 1
-    }
-
+    # 2. Limpar configuração anterior (idempotência)
     local config_name=$(echo "$domain" | sed 's/\./-/g')
     local config_file="/etc/nginx/sites-available/mautic-$config_name"
     local enabled_file="/etc/nginx/sites-enabled/mautic-$config_name"
+    rm -f "$config_file" "$enabled_file"
 
-    # 3. Criar configuração com bloco HTTP (redirect) e HTTPS (proxy)
-    # X-Forwarded-Proto é HTTPS hardcoded — sem isso o Mautic entra em redirect loop
+    # 3. Criar configuração HTTP-only com proxy
+    # NOTA: bloco 443 NÃO incluído aqui — nginx -t falharia sem ssl_certificate.
+    # O Certbot adiciona o bloco 443 automaticamente em seguida.
     cat > "$config_file" <<EOF
 server {
     listen 80;
     server_name $domain;
-
-    # ACME challenge para renovação automática do Certbot
-    location /.well-known/acme-challenge/ {
-        root /var/www/html;
-    }
-
-    # Redirecionar tudo para HTTPS
-    location / {
-        return 301 https://\$host\$request_uri;
-    }
-}
-
-server {
-    listen 443 ssl;
-    server_name $domain;
-
-    # Certbot vai inserir ssl_certificate e ssl_certificate_key aqui
 
     # Mautic requer limites de upload maiores
     client_max_body_size 50M;
@@ -61,8 +41,7 @@ server {
         proxy_set_header Host              \$host;
         proxy_set_header X-Real-IP         \$remote_addr;
         proxy_set_header X-Forwarded-For   \$proxy_add_x_forwarded_for;
-        # https HARDCODED — obrigatório para evitar redirect loop com Mautic
-        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Proto \$scheme;
 
         proxy_connect_timeout 600;
         proxy_send_timeout    600;
@@ -80,27 +59,38 @@ EOF
         log_success "Configuração Nginx (HTTP) ativada para $domain"
     else
         log_error "Erro ao criar configuração Nginx. Removendo arquivo temporário."
+        nginx -t  # exibir erro real
         rm -f "$config_file" "$enabled_file"
         return 1
     fi
 
-    # 5. Configurar SSL se solicitado
+    # 5. Configurar SSL via Certbot
     if [[ "$use_ssl" =~ ^[SsYy]$ ]]; then
-        # Proteção contra email placeholder do Let's Encrypt
-        if [[ "$ssl_email" == "admin@example.com" ]]; then
-            log_warning "Certbot rejeita 'admin@example.com'. SSL será ignorado."
-            log_warning "Por favor, altere SSL_EMAIL no seu arquivo .env e execute novamente."
+        if [[ "$ssl_email" == "admin@example.com" || -z "$ssl_email" ]]; then
+            log_warning "Email inválido para SSL. Altere SSL_EMAIL no .env e execute novamente."
             return 0
         fi
 
         log_info "Solicitando certificado SSL via Certbot..."
-        
+
         if ! command -v certbot &> /dev/null; then
             apt-get install -y certbot python3-certbot-nginx
         fi
 
+        # Certbot --nginx reescreve o config e adiciona o bloco 443 com os certificados
         if certbot --nginx -d "$domain" --non-interactive --agree-tos --email "$ssl_email" --redirect; then
             log_success "Certificado SSL configurado com sucesso para $domain"
+
+            # 6. Patch pós-Certbot: forçar X-Forwarded-Proto https no bloco 443
+            # Sem isso o Mautic recebe scheme=http e entra em redirect loop infinito
+            sed -i 's|proxy_set_header X-Forwarded-Proto \$scheme;|proxy_set_header X-Forwarded-Proto https; # hardcoded-ssl|g' "$config_file"
+
+            if nginx -t &> /dev/null; then
+                systemctl reload nginx
+                log_success "X-Forwarded-Proto corrigido para https (anti redirect-loop Mautic)"
+            else
+                log_warning "nginx -t falhou após patch. Verifique $config_file"
+            fi
         else
             log_warning "Falha ao configurar SSL. O domínio continuará acessível via HTTP."
             log_warning "Verifique DNS e conectividade nas portas 80/443."
@@ -116,5 +106,5 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
         echo "Uso: $0 <dominio> <porta> [use_ssl] [email]"
         exit 1
     fi
-    setup_nginx "$1" "$2" "${3:-n}" "${4:-admin@example.com}"
+    setup_nginx "$1" "$2" "${3:-n}" "${4:-}"
 fi

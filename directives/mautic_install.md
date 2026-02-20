@@ -75,6 +75,12 @@ sudo ./uninstall.sh
 - All scripts use `PROJECT_ROOT` derived from `BASH_SOURCE[0]` — never rely on `pwd` (LRN-20260220-002).
 - Redis healthcheck requires `REDIS_PASSWORD` in the `environment` block (LRN-20260220-004 / ERR-20260220-006).
 - `mautic/mautic:5.2.6` tag doesn't exist — use `5-apache` or `v5` (LRN-20260220-003).
+- **[LRN-20260220-008] Mautic 5 + Docker + Nginx SSL: 5 gotchas obrigatórios**
+  1. Container env: usar `MAUTIC_DB_*` (não `MYSQL_*`) + `DOCKER_MAUTIC_ROLE` em ambos mautic e mautic_worker.
+  2. Race condition: aguardar `/var/www/html/bin/console` existir antes de qualquer CLI (`until test -f ...`).
+  3. Workdir: sempre `-w /var/www/html` em todos os `docker compose exec`.
+  4. CLI params: `mautic:install` usa underscores (`--db_host`), não hyphens (`--db-host`).
+  5. Redirect loop SSL: `local.php` precisa de `trusted_proxies => ['0.0.0.0/0']` + Nginx precisa de `X-Forwarded-Proto https` hardcoded no bloco 443. Nunca incluir `listen 443 ssl` antes do Certbot rodar (`nginx -t` falha sem certificado).
 
 ---
 
