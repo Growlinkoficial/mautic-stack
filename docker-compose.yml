@@ -69,11 +69,14 @@ services:
       MAUTIC_URL: ${MAUTIC_URL}
       # Symfony: confiar no proxy reverso (Nginx) para X-Forwarded-Proto
       # Sem isso, Mautic ignora o header e redireciona HTTP→HTTPS infinitamente
-      TRUSTED_PROXIES: 0.0.0.0/0
+      # LRN-20260220-008: Formato obrigatório JSON array para a imagem oficial
+      MAUTIC_TRUSTED_PROXIES: '["0.0.0.0/0"]'
     volumes:
       - mautic_data:/var/www/html
       - ./config/local.php:/var/www/html/app/config/local.php
       - ./config/php.ini:/usr/local/etc/php/conf.d/mautic-custom.ini
+      # Fix SSL proxy: seta HTTPS=on quando X-Forwarded-Proto: https (necessário para evitar redirect loop)
+      - ./config/apache-proxy.conf:/etc/apache2/conf-enabled/proxy-ssl.conf:ro
     networks:
       - mautic_net
     depends_on:
@@ -112,7 +115,7 @@ services:
       MAUTIC_MESSENGER_DSN_EMAIL: doctrine://default
       MAUTIC_MESSENGER_DSN_HIT: doctrine://default
       # Symfony: confiar no proxy reverso
-      TRUSTED_PROXIES: 0.0.0.0/0
+      MAUTIC_TRUSTED_PROXIES: '["0.0.0.0/0"]'
       MAUTIC_URL: ${MAUTIC_URL}
     volumes:
       - mautic_data:/var/www/html:ro # WARN-006: readonly — worker não deve escrever nos assets

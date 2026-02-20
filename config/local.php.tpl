@@ -20,7 +20,8 @@ $parameters = [
     ],
     'site_url'  => '${MAUTIC_URL}',
     'installed' => false,
-    // Proxy reverso (Nginx+SSL) — sem isso Mautic ignora X-Forwarded-Proto e entra em redirect loop
+    // Proxy reverso (Nginx+SSL) — Fundamental para evitar redirect loop no Symfony/Mautic 5
+    // Estes valores são fallbacks caso a env MAUTIC_TRUSTED_PROXIES não seja detectada
     'trusted_proxies'        => ['0.0.0.0/0'],
     'trusted_header_clients' => ['127.0.0.1', '172.16.0.0/12'],
 ];
