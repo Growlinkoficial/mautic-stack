@@ -67,6 +67,9 @@ services:
       MAUTIC_MESSENGER_DSN_HIT: doctrine://default
       # URL pública do Mautic
       MAUTIC_URL: ${MAUTIC_URL}
+      # Symfony: confiar no proxy reverso (Nginx) para X-Forwarded-Proto
+      # Sem isso, Mautic ignora o header e redireciona HTTP→HTTPS infinitamente
+      TRUSTED_PROXIES: 0.0.0.0/0
     volumes:
       - mautic_data:/var/www/html
       - ./config/local.php:/var/www/html/app/config/local.php
@@ -108,6 +111,8 @@ services:
       MAUTIC_DB_PASSWORD: ${MYSQL_PASSWORD}
       MAUTIC_MESSENGER_DSN_EMAIL: doctrine://default
       MAUTIC_MESSENGER_DSN_HIT: doctrine://default
+      # Symfony: confiar no proxy reverso
+      TRUSTED_PROXIES: 0.0.0.0/0
       MAUTIC_URL: ${MAUTIC_URL}
     volumes:
       - mautic_data:/var/www/html:ro # WARN-006: readonly — worker não deve escrever nos assets
