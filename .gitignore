@@ -1,0 +1,37 @@
+# Credentials & Secrets
+.env
+credentials.json
+token.json
+
+# Temporary files (safe to delete and regenerate)
+.tmp/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Agent
+.learnings/
+.agent/

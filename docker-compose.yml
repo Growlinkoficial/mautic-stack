@@ -1,0 +1,74 @@
+services:
+  mysql:
+    image: mysql:8.0
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - mautic_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - mautic_net
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a $$REDIS_PASSWORD ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  mautic:
+    image: mautic/mautic:5.2.6
+    restart: unless-stopped
+    ports:
+      - "${MAUTIC_PORT:-8080}:80"
+    volumes:
+      - mautic_data:/var/www/html
+      - ./config/local.php:/var/www/html/app/config/local.php
+      - ./config/php.ini:/usr/local/etc/php/conf.d/mautic-custom.ini
+    networks:
+      - mautic_net
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  mautic_worker:
+    image: mautic/mautic:5.2.6
+    restart: unless-stopped
+    # Symfony Messenger consumer - processa filas assíncronas do Mautic 5
+    command: php bin/console mautic:messages:consume email --time-limit=300 --memory-limit=256M
+    volumes:
+      - mautic_data:/var/www/html
+      - ./config/local.php:/var/www/html/app/config/local.php
+      - ./config/php.ini:/usr/local/etc/php/conf.d/mautic-custom.ini
+    networks:
+      - mautic_net
+    depends_on:
+      mautic:
+        condition: service_started
+
+networks:
+  mautic_net:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  redis_data:
+  mautic_data:
