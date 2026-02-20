@@ -37,12 +37,12 @@ log_success "Cron jobs removidos."
 
 # 2. Docker Compose Down
 log_info "Parando e removendo containers..."
-docker compose down
+docker compose -f "${PROJECT_ROOT}/docker-compose.yml" down
 
 read -p "Deseja remover também os volumes (DADOS DO BANCO E ARQUIVOS)? (s/n): " confirm_v
 if [[ $confirm_v =~ ^[SsYy]$ ]]; then
     log_info "Removendo volumes..."
-    docker compose down -v
+    docker compose -f "${PROJECT_ROOT}/docker-compose.yml" down -v
     log_success "Volumes removidos."
 fi
 

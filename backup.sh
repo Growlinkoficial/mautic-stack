@@ -20,7 +20,7 @@ echo "Iniciando backup do Mautic Stack..."
 
 # 1. MySQL Dump
 SQL_FILE="${BACKUP_DIR}/mysql_backup_${DATE}.sql"
-if docker compose exec -T mysql mysqldump -u root -p"${MYSQL_ROOT_PASSWORD}" "${MYSQL_DATABASE}" > "$SQL_FILE"; then
+if docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T mysql mysqldump -u root -p"${MYSQL_ROOT_PASSWORD}" "${MYSQL_DATABASE}" > "$SQL_FILE"; then
     echo "[SUCESSO] Dump do MySQL salvo em $(basename "$SQL_FILE")"
 else
     echo "[ERRO] Falha ao realizar dump do MySQL"

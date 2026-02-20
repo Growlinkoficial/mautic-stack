@@ -58,12 +58,12 @@ main() {
 
     # 4. Idempotência / Verificação de Instalação Existente
     CURRENT_STAGE="Idempotency Check"
-    if docker compose ps --services --filter "status=running" | grep -qi "mautic"; then
+    if docker compose -f "${PROJECT_ROOT}/docker-compose.yml" ps --services --filter "status=running" | grep -qi "mautic"; then
         log_warning "Containers do Mautic já estão em execução."
         read -p "Deseja [r]einiciar, [a]tualizar ou [s]air? (r/a/s) [s]: " action
         action=${action:-s}
         case "$action" in
-            r) docker compose restart ;;
+            r) docker compose -f "${PROJECT_ROOT}/docker-compose.yml" restart ;;
             a) log_info "Prosseguindo com a verificação/atualização..." ;;
             *) exit 0 ;;
         esac
@@ -84,10 +84,10 @@ main() {
     # 6. Docker Compose Up
     CURRENT_STAGE="Docker Compose Up"
     log_info "Iniciando containers via Docker Compose..."
-    docker compose pull
-    if ! docker compose up -d; then
+    docker compose -f "${PROJECT_ROOT}/docker-compose.yml" pull
+    if ! docker compose -f "${PROJECT_ROOT}/docker-compose.yml" up -d; then
         log_error "Falha ao iniciar containers via Docker Compose. Consultando logs..."
-        docker compose logs --tail=20
+        docker compose -f "${PROJECT_ROOT}/docker-compose.yml" logs --tail=20
         exit 1
     fi
 
@@ -96,7 +96,7 @@ main() {
     local timeout=120
     local start_time=$(date +%s)
     while true; do
-        if docker compose ps | grep -q "starting"; then
+        if docker compose -f "${PROJECT_ROOT}/docker-compose.yml" ps | grep -q "starting"; then
             local current_time=$(date +%s)
             local elapsed=$((current_time - start_time))
             if [ $elapsed -gt $timeout ]; then
@@ -113,9 +113,9 @@ main() {
     # 7. Instalação Headless Mautic
     log_info "Verificando status de instalação do Mautic..."
     # Usar mautic:about para verificação robusta
-    if ! docker compose exec -T mautic php bin/console about 2>&1 | grep -qi "installed.*yes"; then
+    if ! docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T mautic php bin/console about 2>&1 | grep -qi "installed.*yes"; then
         log_info "Mautic não instalado. Iniciando instalação CLI..."
-        docker compose exec -T mautic php bin/console mautic:install \
+        docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T mautic php bin/console mautic:install \
             --db-host=mysql --db-port=3306 \
             --db-name=${MYSQL_DATABASE} \
             --db-user=${MYSQL_USER} \
@@ -127,7 +127,7 @@ main() {
             "${MAUTIC_URL}"
         
         # Corrigir permissões iniciais no volume
-        docker compose exec -T mautic chown -R www-data:www-data .
+        docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T mautic chown -R www-data:www-data .
         log_success "Mautic instalado com sucesso via CLI."
     else
         log_info "Mautic já consta como instalado. Pulando mautic:install."
@@ -135,13 +135,13 @@ main() {
 
     # 8. Pós-Instalação / Cache
     log_info "Limpando cache e gerando assets..."
-    docker compose exec -T mautic php bin/console cache:clear
-    docker compose exec -T mautic php bin/console mautic:assets:generate
-    docker compose exec -T mautic php bin/console mautic:segments:update
+    docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T mautic php bin/console cache:clear
+    docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T mautic php bin/console mautic:assets:generate
+    docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T mautic php bin/console mautic:segments:update
 
     # 9. Configurar Cron Jobs
     log_info "Configurando Cron Jobs no host..."
-    INSTALL_DIR="$(pwd)"
+    INSTALL_DIR="${PROJECT_ROOT}"
     CRON_FILE="/etc/cron.d/mautic-stack"
     
     cat > "/tmp/mautic-cron" <<EOF
