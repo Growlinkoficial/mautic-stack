@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# MAUTIC STACK INSTALLER (v5.2.6)
+# MAUTIC STACK INSTALLER (v5)
 # ==============================================================================
 
 # Auto-correção para finais de linha Windows (CRLF)
@@ -29,6 +29,165 @@ cleanup() {
 trap cleanup EXIT
 
 # ==============================================================================
+# WIZARD DE CONFIGURAÇÃO — cria o .env interativamente se não existir
+# ==============================================================================
+
+wizard_setup_env() {
+    local env_file="${PROJECT_ROOT}/.env"
+
+    # Idempotência: se .env já existe, só carrega e sai
+    if [ -f "$env_file" ]; then
+        log_info ".env já existe. Usando configurações existentes."
+        set -a; source "$env_file"; set +a
+        return 0
+    fi
+
+    echo
+    echo -e "${BLUE}═══════════════════════════════════════════════════${NC}"
+    echo -e "${BLUE}          CONFIGURAÇÃO DO AMBIENTE MAUTIC           ${NC}"
+    echo -e "${BLUE}═══════════════════════════════════════════════════${NC}"
+    echo -e "  Nenhum arquivo .env encontrado. Vamos configurar agora."
+    echo
+
+    # ──────────────────────────────────────────────────────
+    # [1/3] DOMÍNIO
+    # ──────────────────────────────────────────────────────
+    echo -e "${BLUE}[1/3] DOMÍNIO${NC}"
+    read -p "  Deseja configurar domínio/subdomínio? (s = domínio próprio, n = localhost) [n]: " _use_domain
+    _use_domain=${_use_domain:-n}
+
+    local WIZARD_USE_DOMAIN="false"
+    local WIZARD_DOMAIN="localhost"
+    local WIZARD_SSL_EMAIL=""
+    local WIZARD_MAUTIC_URL
+
+    if [[ "$_use_domain" =~ ^[SsYy]$ ]]; then
+        WIZARD_USE_DOMAIN="true"
+        read -p "  Informe o domínio (ex: mautic.suaempresa.com): " WIZARD_DOMAIN
+        while [[ -z "$WIZARD_DOMAIN" ]]; do
+            read -p "  Domínio não pode ser vazio. Informe o domínio: " WIZARD_DOMAIN
+        done
+        read -p "  Email para o certificado SSL (Let's Encrypt): " WIZARD_SSL_EMAIL
+        while [[ -z "$WIZARD_SSL_EMAIL" || "$WIZARD_SSL_EMAIL" == *"example.com"* ]]; do
+            read -p "  Email inválido (não use example.com). Informe o email: " WIZARD_SSL_EMAIL
+        done
+        WIZARD_MAUTIC_URL="https://${WIZARD_DOMAIN}"
+    else
+        log_info "  → Instalação em modo localhost."
+        WIZARD_USE_DOMAIN="false"
+        WIZARD_DOMAIN="localhost"
+    fi
+    echo
+
+    # ──────────────────────────────────────────────────────
+    # [2/3] PORTA
+    # ──────────────────────────────────────────────────────
+    echo -e "${BLUE}[2/3] PORTA${NC}"
+    read -p "  Porta de acesso ao Mautic [8080]: " WIZARD_PORT
+    WIZARD_PORT=${WIZARD_PORT:-8080}
+    # Validar que é número
+    while ! [[ "$WIZARD_PORT" =~ ^[0-9]+$ ]]; do
+        read -p "  Porta inválida. Informe um número de porta [8080]: " WIZARD_PORT
+        WIZARD_PORT=${WIZARD_PORT:-8080}
+    done
+    # Ajustar URL se ainda estiver em localhost
+    if [ "$WIZARD_USE_DOMAIN" == "false" ]; then
+        WIZARD_MAUTIC_URL="http://localhost:${WIZARD_PORT}"
+    fi
+    echo
+
+    # ──────────────────────────────────────────────────────
+    # [3/3] ADMINISTRADOR
+    # ──────────────────────────────────────────────────────
+    echo -e "${BLUE}[3/3] ADMINISTRADOR${NC}"
+    read -p "  Email do administrador: " WIZARD_ADMIN_EMAIL
+    while [[ -z "$WIZARD_ADMIN_EMAIL" || "$WIZARD_ADMIN_EMAIL" == *"example.com"* ]]; do
+        read -p "  Email inválido. Informe um email real: " WIZARD_ADMIN_EMAIL
+    done
+    read -p "  Primeiro nome: " WIZARD_ADMIN_FIRSTNAME
+    WIZARD_ADMIN_FIRSTNAME=${WIZARD_ADMIN_FIRSTNAME:-Admin}
+    read -p "  Sobrenome: " WIZARD_ADMIN_LASTNAME
+    WIZARD_ADMIN_LASTNAME=${WIZARD_ADMIN_LASTNAME:-User}
+    echo
+
+    # ──────────────────────────────────────────────────────
+    # GERAÇÃO DE SENHAS
+    # ──────────────────────────────────────────────────────
+    log_info "Gerando senhas seguras..."
+    local GEN_MYSQL_ROOT_PASSWORD
+    local GEN_MYSQL_PASSWORD
+    local GEN_ADMIN_PASSWORD
+    local GEN_REDIS_PASSWORD
+    GEN_MYSQL_ROOT_PASSWORD=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 24)
+    GEN_MYSQL_PASSWORD=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 24)
+    GEN_ADMIN_PASSWORD=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 24)
+    GEN_REDIS_PASSWORD=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 24)
+
+    # ──────────────────────────────────────────────────────
+    # ESCREVER .env
+    # ──────────────────────────────────────────────────────
+    cat > "$env_file" <<EOF
+# ==============================================================================
+# MAUTIC STACK - ENVIRONMENT VARIABLES
+# Gerado automaticamente em $(date '+%Y-%m-%d %H:%M:%S')
+# ==============================================================================
+
+# Compose Project Name (evita colisão de volumes/redes)
+COMPOSE_PROJECT_NAME=mautic-stack
+
+# ------------------------------------------------------------------------------
+# MAUTIC CONFIGURATION
+# ------------------------------------------------------------------------------
+MAUTIC_PORT=${WIZARD_PORT}
+MAUTIC_URL=${WIZARD_MAUTIC_URL}
+
+# Admin Inicial (criado automaticamente via CLI)
+MAUTIC_ADMIN_USERNAME=admin
+MAUTIC_ADMIN_EMAIL=${WIZARD_ADMIN_EMAIL}
+MAUTIC_ADMIN_PASSWORD=${GEN_ADMIN_PASSWORD}
+MAUTIC_ADMIN_FIRSTNAME=${WIZARD_ADMIN_FIRSTNAME}
+MAUTIC_ADMIN_LASTNAME=${WIZARD_ADMIN_LASTNAME}
+
+# ------------------------------------------------------------------------------
+# DATABASE CONFIGURATION (MySQL 8.0)
+# ------------------------------------------------------------------------------
+MYSQL_ROOT_PASSWORD=${GEN_MYSQL_ROOT_PASSWORD}
+MYSQL_DATABASE=mautic
+MYSQL_USER=mautic
+MYSQL_PASSWORD=${GEN_MYSQL_PASSWORD}
+
+# ------------------------------------------------------------------------------
+# CACHE CONFIGURATION (Redis 7)
+# ------------------------------------------------------------------------------
+REDIS_PASSWORD=${GEN_REDIS_PASSWORD}
+
+# ------------------------------------------------------------------------------
+# DOMAIN & NGINX (configurado pelo wizard)
+# ------------------------------------------------------------------------------
+USE_DOMAIN=${WIZARD_USE_DOMAIN}
+DOMAIN=${WIZARD_DOMAIN}
+SSL_EMAIL=${WIZARD_SSL_EMAIL}
+EOF
+    chmod 600 "$env_file"
+
+    echo
+    log_success ".env criado em: ${env_file}"
+    log_info    "Guarde suas credenciais! Todas as senhas foram salvas nesse arquivo."
+    echo
+
+    # Confirmação antes de prosseguir
+    read -p "Prosseguir com a instalação? (s/n) [s]: " _proceed
+    _proceed=${_proceed:-s}
+    if [[ ! "$_proceed" =~ ^[SsYy]$ ]]; then
+        log_info "Instalação cancelada pelo usuário. O .env foi mantido."
+        exit 0
+    fi
+
+    # Carregar vars no processo atual
+    set -a; source "$env_file"; set +a
+}
+
+# ==============================================================================
 # EXECUÇÃO PRINCIPAL
 # ==============================================================================
 
@@ -39,9 +198,13 @@ main() {
 
     clear
     echo -e "${BLUE}═══════════════════════════════════════════════════${NC}"
-    echo -e "${BLUE}          MAUTIC STACK INSTALLER v5.2.6            ${NC}"
+    echo -e "${BLUE}              MAUTIC STACK INSTALLER v5            ${NC}"
     echo -e "${BLUE}═══════════════════════════════════════════════════${NC}"
     echo
+
+    # 0. Wizard de Configuração (cria .env se não existir)
+    CURRENT_STAGE="Wizard"
+    wizard_setup_env
 
     # 1. Validar Root
     validate_root
@@ -179,20 +342,11 @@ EOF
 LOGROTATE
     log_success "Logrotate configurado: /etc/logrotate.d/mautic-stack (14 dias, compress)"
 
-    # 10. Configurar Nginx (Opcional)
-    if [[ "$USE_DOMAIN" == "true" ]]; then
+    # 10. Configurar Nginx (se domínio foi configurado no wizard)
+    if [[ "${USE_DOMAIN:-false}" == "true" ]]; then
+        log_info "Configurando Nginx + SSL para ${DOMAIN}..."
         source "${PROJECT_ROOT}/scripts/nginx_setup.sh"
         setup_nginx "$DOMAIN" "$MAUTIC_PORT" "y" "$SSL_EMAIL"
-    else
-        echo
-        read -p "Deseja configurar um domínio com Nginx e SSL agora? (s/n) [n]: " setup_ans
-        if [[ "$setup_ans" =~ ^[SsYy]$ ]]; then
-            read -p "Digite o domínio (ex: mautic.exemplo.com): " domain
-            read -p "Deseja SSL automático? (s/n) [s]: " use_ssl
-            use_ssl=${use_ssl:-s}
-            source "${PROJECT_ROOT}/scripts/nginx_setup.sh"
-            setup_nginx "$domain" "$MAUTIC_PORT" "$use_ssl" "$MAUTIC_ADMIN_EMAIL"
-        fi
     fi
 
     # 11. Validação Final
@@ -204,10 +358,11 @@ LOGROTATE
     log_success "      INSTALAÇÃO CONCLUÍDA COM SUCESSO!            "
     log_success "═══════════════════════════════════════════════════"
     echo
-    echo -e "  🚀 URL: ${MAUTIC_URL}"
-    echo -e "  👤 Admin: ${MAUTIC_ADMIN_EMAIL}"
-    echo -e "  🔑 Senha: (conforme configurado no .env — nunca exibida por segurança)"
-    echo -e "  📁 Logs: /var/log/mautic-stack/"
+    echo -e "  🚀 URL:    ${MAUTIC_URL}"
+    echo -e "  👤 Admin:  ${MAUTIC_ADMIN_EMAIL}"
+    echo -e "  🔑 Senha:  (salva no .env — nunca exibida por segurança)"
+    echo -e "  📁 Logs:   /var/log/mautic-stack/"
+    echo -e "  📄 .env:   ${PROJECT_ROOT}/.env"
     echo -e "  💾 Backup: Execute ./backup.sh"
     echo
 }

@@ -8,21 +8,17 @@ Stack: `mautic/mautic:5-apache` · `mysql:8.0` · `redis:7-alpine` · Nginx + SS
 ## 🚀 Instalação
 
 ```bash
-# 1. Configure o ambiente
-cp .env.example .env
-nano .env  # Edite senhas, domínio, email, etc.
-
-# 2. Execute o instalador (como root)
 chmod +x install.sh
 sudo ./install.sh
 ```
 
-O instalador realiza automaticamente:
-- Download e inicialização dos containers via Docker Compose  
-- Instalação headless do Mautic via CLI  
-- Configuração de cron jobs e logrotate  
-- Setup opcional de Nginx + SSL (Let's Encrypt)  
-- Validação final do stack
+O instalador guia você por todas as configurações necessárias via **wizard interativo**:
+- Domínio ou localhost
+- Porta (padrão 8080)
+- Email e nome do administrador
+- **Senhas geradas automaticamente** e salvas no `.env`
+
+> Referência de variáveis disponíveis: `.env.example`
 
 ---
 
