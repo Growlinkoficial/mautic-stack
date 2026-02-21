@@ -27,10 +27,10 @@ Automate the deployment, maintenance, backup, and restore of a Mautic 5 instance
 6. `scripts/validate.sh` — Full health check (containers, HTTP, MySQL, Redis, worker).
 
 ## Success Criteria
-- [ ] 4 containers running: `mautic`, `mautic_worker`, `mysql`, `redis`
+- [ ] 5 containers running: `mautic`, `mautic_worker`, `mautic_cron`, `mysql`, `redis`
 - [ ] Mautic accessible via URL (HTTP 200 on `/s/login`)
 - [ ] Redis cache adapter active (`debug:config mautic_cache | grep redis`)
-- [ ] Cron jobs active: `/etc/cron.d/mautic-stack`
+- [ ] Cron jobs active: Internos no container `mautic_cron` (não no host)
 - [ ] Logrotate configured: `/etc/logrotate.d/mautic-stack`
 - [ ] Worker consuming queue (visible in `validate.sh`)
 

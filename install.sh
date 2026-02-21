@@ -375,20 +375,9 @@ main() {
     docker compose -f "${PROJECT_ROOT}/docker-compose.yml" exec -T -w /var/www/html mautic php bin/console mautic:segments:update
 
     # 9. Configurar Cron Jobs
-    log_info "Configurando Cron Jobs no host..."
-    INSTALL_DIR="${PROJECT_ROOT}"
-    CRON_FILE="/etc/cron.d/mautic-stack"
-    
-    cat > "/tmp/mautic-cron" <<EOF
-# Cron Jobs para Mautic Stack ($INSTALL_DIR)
-*/5 * * * * root docker compose -f $INSTALL_DIR/docker-compose.yml exec -T mautic php bin/console mautic:segments:update >> /var/log/mautic-stack/cron.log 2>&1
-*/5 * * * * root docker compose -f $INSTALL_DIR/docker-compose.yml exec -T mautic php bin/console mautic:campaigns:trigger >> /var/log/mautic-stack/cron.log 2>&1
-*/10 * * * * root docker compose -f $INSTALL_DIR/docker-compose.yml exec -T mautic php bin/console mautic:emails:send >> /var/log/mautic-stack/cron.log 2>&1
-*/30 * * * * root docker compose -f $INSTALL_DIR/docker-compose.yml exec -T mautic php bin/console mautic:social:monitoring >> /var/log/mautic-stack/cron.log 2>&1
-EOF
-    mv "/tmp/mautic-cron" "$CRON_FILE"
-    chmod 644 "$CRON_FILE"
-    log_success "Cron jobs instalados em $CRON_FILE"
+    # OBS: O projeto agora utiliza um container dedicado 'mautic_cron' (definido no docker-compose.yml)
+    # conforme as melhores práticas oficiais do Mautic. Crons no host foram removidas.
+    log_info "Configuração de Cron Jobs delegada ao container mautic_cron."
 
     # WARN-007: Configuração de rotação de logs para evitar disco cheio
     log_info "Configurando rotação de logs (logrotate)..."

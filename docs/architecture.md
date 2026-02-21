@@ -16,6 +16,11 @@
                     │                    │  (fila assíncrona) │   │
                     │                    └────────┬───────────┘   │
                     │                             │               │
+                    │                    ┌────────┴───────────┐   │
+                    │                    │  mautic_cron       │   │
+                    │                    │  (tarefas Agend.)  │   │
+                    │                    └────────┬───────────┘   │
+                    │                             │               │
                     │              ┌──────────────┼──────────┐    │
                     │              │              │          │    │
                     │         ┌───▼───┐      ┌───▼───┐       │    │
@@ -37,6 +42,9 @@ O servidor web principal com Apache. Serve o painel, processa requests HTTP sín
 O mesmo código Mautic, mas rodando apenas como consumidor de filas do **Symfony Messenger**. Processa envios de e-mail, hits de tracking e broadcasts de forma assíncrona. É **separado do web** por um motivo: enviar 100.000 e-mails não pode travar a interface.
 
 > O worker monta `mautic_data` como **read-only** — ele nunca deve escrever assets. Isso previne corrupção do volume se o worker travar.
+
+### `mautic_cron`
+Container dedicado à execução das tarefas agendadas do Mautic (segments:update, campaigns:trigger, etc.). Roda um daemon de cron interno para garantir que as rotinas de marketing operem independentemente do tráfego web.
 
 ### `mysql`
 Banco de dados relacional. Armazena contatos, campanhas, configurações, histórico de envios. Usa `utf8mb4` para suporte completo a Unicode e emoji.

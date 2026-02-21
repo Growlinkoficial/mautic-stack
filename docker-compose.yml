@@ -142,6 +142,37 @@ services:
           cpus: '0.5'
           memory: 512M
 
+  mautic_cron:
+    image: mautic-custom:5-apache
+    restart: unless-stopped
+    # Papel dedicado para execução de crons internas do Mautic
+    environment:
+      DOCKER_MAUTIC_ROLE: mautic_cron
+      MAUTIC_DB_HOST: mysql
+      MAUTIC_DB_PORT: 3306
+      MAUTIC_DB_NAME: ${MYSQL_DATABASE}
+      MAUTIC_DB_USER: ${MYSQL_USER}
+      MAUTIC_DB_PASSWORD: ${MYSQL_PASSWORD}
+      MAUTIC_MESSENGER_DSN_EMAIL: doctrine://default
+      MAUTIC_MESSENGER_DSN_HIT: doctrine://default
+      MAUTIC_TRUSTED_PROXIES: '["0.0.0.0/0"]'
+      MAUTIC_URL: ${MAUTIC_URL}
+    volumes:
+      - mautic_data:/var/www/html:rw # Necessário rw para logs/cache
+      - ./config/local.php:/var/www/html/app/config/local.php
+      - ./config/php.ini:/usr/local/etc/php/conf.d/mautic-custom.ini
+    networks:
+      - mautic_net
+    depends_on:
+      mautic:
+        condition: service_healthy
+    # Limites para não derrubar outros containers conforme solicitado
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
 networks:
   mautic_net:
     driver: bridge
