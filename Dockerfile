@@ -2,18 +2,21 @@
 # Mautic 5 — Custom Image
 # Baseado em mautic/mautic:5-apache com dependências adicionais.
 #
-# Problema resolvido:
-# ERR-20260220-libavif: A imagem base foi compilada com suporte a libavif,
-# mas libavif15 não está presente no Debian base, impedindo a extensão gd
-# de carregar e causando warnings ao iniciar PHP.
+# Problemas resolvidos:
+# ERR-20260220-015: libavif15 ausente no Debian base → gd não carregava
+# ERR-20260220-019: libXpm.so.4 ausente → gd falhava em startup com warning
 # ==============================================================================
 FROM mautic/mautic:5-apache
 
-# Instalar libavif como root antes de iniciar como www-data
+# Instalar dependências da extensão gd como root
 USER root
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends libavif15 && \
+    apt-get install -y --no-install-recommends \
+    libavif15 \
+    libxpm4 \
+    libwebp7 \
+    libjpeg62-turbo && \
     rm -rf /var/lib/apt/lists/*
 
 # Retornar ao usuário padrão da imagem
