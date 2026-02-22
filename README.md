@@ -30,7 +30,7 @@ Credenciais salvas em `.env` — nunca exibidas no terminal.
 | [💾 Backup & Restore](docs/backup-restore.md) | O que é salvo, como restaurar, estratégia de retenção |
 | [🛠️ Operações](docs/operations.md) | Comandos do dia a dia, idioma, cache, logs, worker |
 | [🔎 Troubleshooting](docs/troubleshooting.md) | Todos os erros conhecidos — sintoma → causa → solução |
-| [🏗️ Arquitetura](docs/architecture.md) | Por que 4 containers, SSL termination, Dockerfile customizado |
+| [🏗️ Arquitetura](docs/architecture.md) | Por que 5 containers, SSL termination, Dockerfile customizado |
 
 ---
 
@@ -43,7 +43,7 @@ Credenciais salvas em `.env` — nunca exibidas no terminal.
 ├── backup.sh             # Dump MySQL + tarball do volume
 ├── restore.sh            # Restaura a partir do backup mais recente
 ├── Dockerfile            # Imagem customizada (adiciona libavif15 para gd)
-├── docker-compose.yml    # 4 serviços com healthchecks e resource limits
+├── docker-compose.yml    # 5 serviços com healthchecks e resource limits
 ├── config/               # local.php.tpl, php.ini, apache-proxy.conf
 ├── scripts/              # preflight, docker_install, nginx_setup, validate
 ├── docs/                 # Documentação técnica detalhada

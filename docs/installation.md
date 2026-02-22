@@ -2,7 +2,7 @@
 
 ## Por que esse script existe
 
-Implantar o Mautic 5 com Docker manualmente envolve ~11 passos: verificar pré-requisitos, instalar Docker, gerar senhas, criar `.env`, gerar `local.php`, baixar imagens, construir imagem customizada, aguardar race conditions de boot, executar o instalador CLI, configurar Nginx/SSL e instalar cron jobs. Um erro em qualquer etapa deixa o stack em estado indeterminado.
+Implantar o Mautic 5 com Docker manualmente envolve ~11 passos: verificar pré-requisitos, instalar Docker, gerar senhas, criar `.env`, gerar `local.php`, baixar imagens, construir imagem customizada, aguardar race conditions de boot, executar o instalador CLI, configurar Nginx/SSL e configurar o container de cron dedicado. Um erro em qualquer etapa deixa o stack em estado indeterminado.
 
 O `install.sh` é um **orquestrador idempotente**: pode ser rodado múltiplas vezes sem quebrar o que já funciona.
 
@@ -69,10 +69,10 @@ Na primeira execução, o script cria o `.env` interativamente:
 5.  Idempotência   → Verifica se stack já está rodando (re/atualiza ou sai)
 6.  Config         → Gera config/local.php a partir de local.php.tpl via envsubst
 7.  Pull + Build   → Baixa imagens base + constrói mautic-custom:5-apache (Dockerfile)
-8.  Docker Up      → Sobe os 4 containers com healthcheck wait
+8.  Docker Up      → Sobe os 5 containers com healthcheck wait
 9.  File Init      → Aguarda bin/console estar disponível no volume (evita race condition)
 10. Mautic Install → Executa mautic:install via CLI (headless) + marca installed=true
-11. Pós-install    → cache:clear, assets, cron jobs, logrotate, Nginx/SSL (se domínio)
+11. Pós-install    → cache:clear, assets, logrotate, Nginx/SSL (se domínio)
 ```
 
 ---
@@ -97,8 +97,7 @@ sudo ./install.sh
 |----------|-------|-----------|
 | `.env` | raiz do projeto | Credenciais e configuração |
 | `config/local.php` | raiz do projeto | Configuração PHP do Mautic |
-| `/etc/cron.d/mautic-stack` | sistema | Cron jobs automáticos |
-| `/etc/logrotate.d/mautic-stack` | sistema | Rotação de logs |
+| `/etc/logrotate.d/mautic-stack` | sistema | Rotação de logs do host |
 | `/var/log/mautic-stack/install_verbose.log` | sistema | Log completo da instalação |
 
 ---

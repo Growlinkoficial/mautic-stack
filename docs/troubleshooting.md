@@ -26,13 +26,11 @@ docker compose up -d --force-recreate mautic
 
 ---
 
-### `ENV:MAUTIC_DB_HOST is not set` / Container unhealthy
+**Causa**: O bloco `environment:` do serviço `mautic`, `mautic_worker` ou `mautic_cron` no `docker-compose.yml` está incompleto. A imagem `mautic/mautic:5-apache` exige variáveis com prefixo `MAUTIC_DB_*`, não `MYSQL_*`.
 
-**Causa**: O bloco `environment:` do serviço `mautic` ou `mautic_worker` no `docker-compose.yml` está incompleto. A imagem `mautic/mautic:5-apache` exige variáveis com prefixo `MAUTIC_DB_*`, não `MYSQL_*`.
-
-**Solução**: Verificar `docker-compose.yml` — os dois serviços devem ter:
+**Solução**: Verificar `docker-compose.yml` — os serviços devem ter:
 ```yaml
-DOCKER_MAUTIC_ROLE: mautic_web   # ou mautic_worker
+DOCKER_MAUTIC_ROLE: mautic_web   # ou mautic_worker ou mautic_cron
 MAUTIC_DB_HOST: mysql
 MAUTIC_DB_NAME: ${MYSQL_DATABASE}
 MAUTIC_DB_USER: ${MYSQL_USER}
@@ -86,7 +84,7 @@ docker compose exec mautic chmod -R 775 /var/www/html/var/logs
 **Solução**: Reconstruir a imagem customizada:
 ```bash
 docker compose build
-docker compose up -d --force-recreate mautic mautic_worker
+docker compose up -d --force-recreate mautic mautic_worker mautic_cron
 ```
 
 > Referência: ERR-20260220-015

@@ -16,11 +16,11 @@ validate_stack() {
     fi
 
     # 1. Containers Running
-    local running_count=$(docker compose -f "${PROJECT_ROOT}/docker-compose.yml" ps | grep -E "mautic|mautic_worker|mysql|redis" | grep -c -i "running\|Up")
-    if [ "$running_count" -ge 4 ]; then
-        log_success "Todos os 4 containers estão em execução."
+    local running_count=$(docker compose -f "${PROJECT_ROOT}/docker-compose.yml" ps | grep -E "mautic|mautic_worker|mautic_cron|mysql|redis" | grep -c -i "running\|Up")
+    if [ "$running_count" -ge 5 ]; then
+        log_success "Todos os 5 containers estão em execução."
     else
-        log_error "Apenas $running_count de 4 containers estão rodando corretamente."
+        log_error "Apenas $running_count de 5 containers estão rodando corretamente."
         docker compose -f "${PROJECT_ROOT}/docker-compose.yml" ps
         return 1
     fi
@@ -61,6 +61,13 @@ validate_stack() {
         log_success "Mautic Worker (consumer de filas) está rodando."
     else
         log_warning "Mautic Worker não detectado como rodando. Verifique: docker compose logs mautic_worker"
+    fi
+
+    # 7. Mautic Cron Check
+    if docker compose -f "${PROJECT_ROOT}/docker-compose.yml" ps mautic_cron | grep -qi "running\|up"; then
+        log_success "Mautic Cron (tarefas agendadas) está rodando."
+    else
+        log_warning "Mautic Cron não detectado como rodando. Verifique: docker compose logs mautic_cron"
     fi
 
     log_success "Validação concluída."

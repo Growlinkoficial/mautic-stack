@@ -19,6 +19,7 @@ docker compose ps
 # Logs em tempo real
 docker compose logs -f mautic
 docker compose logs -f mautic_worker
+docker compose logs -f mautic_cron
 ```
 
 ---
@@ -60,13 +61,14 @@ docker compose exec -w /var/www/html mautic php bin/console cache:clear
 # Reiniciar um serviço específico
 docker compose restart mautic
 docker compose restart mautic_worker
+docker compose restart mautic_cron
 
 # Recriar container (força releitura de variáveis de ambiente)
 docker compose up -d --force-recreate mautic
 
 # Reconstruir imagem customizada (após atualizar o Dockerfile)
 docker compose build
-docker compose up -d --force-recreate mautic mautic_worker
+docker compose up -d --force-recreate mautic mautic_worker mautic_cron
 ```
 
 ---
@@ -131,7 +133,7 @@ docker compose exec mautic chmod -R 775 /var/www/html/var/logs
 cat /var/log/mautic-stack/install_verbose.log
 
 # Log de cron jobs
-tail -f /var/log/mautic-stack/cron.log
+docker compose logs -f mautic_cron
 
 # Log de aplicação do Mautic
 docker compose exec mautic tail -f var/logs/mautic_prod.log

@@ -30,7 +30,7 @@ sudo ./backup.sh
 
 ### Como agendar (cron)
 
-O `install.sh` configura automaticamente. Para adicionar manualmente:
+**Nota**: Ao contrário das tarefas do Mautic que rodam via Docker, o backup é agendado no **host** para facilitar a gestão de arquivos locais. O `install.sh` configura automaticamente. Para adicionar manualmente:
 
 ```bash
 # Backup diário às 3h da manhã
@@ -56,7 +56,7 @@ O `install.sh` configura automaticamente. Para adicionar manualmente:
 2. Seleciona automaticamente o mais recente
 3. Exibe o nome dos arquivos que serão restaurados
 4. Pede confirmação explícita (s/n)
-5. Para os containers mautic + mautic_worker
+5. Para os containers mautic + mautic_worker + mautic_cron
 6. Restaura o banco MySQL via mysql < arquivo.sql
 7. Restaura os arquivos do volume via alpine + tar xzf
 8. Reinicia os containers
